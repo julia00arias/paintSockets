@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+
+			#colores{
+				border: 0px solid black;
+				width:15px;
+				height:15px;
+				margin:1px;
+			}
+			#panel{position:absolute; 
+					border: 0px solid black;}
+			a{text-decoration:none;}
+
+    </style>
+    <script src="https://cdn.socket.io/4.1.2/socket.io.min.js"></script>
+    <script src="index.js" defer></script>
+  </head>
+  <body>
+   <!-- <ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input" autocomplete="off" /><button>Send</button>
+    </form> -->
+    <div>
+			<select id="seleccion" name="seleccion">
+				<option value="1">Linia</option>
+				<option value="2">Arco</option>
+				<option value="3">Punto</option>
+			</select>
+			<select id="relleno" name="relleno">
+				<option value="0">Color Linia</option>
+				<option value="1">Color Relleno</option>
+			</select>
+			<input type="file" id="img" name="imagen">
+			<input type="button" id="reset" value="limpiar">
+		</div>
+		<canvas id="micanvas" width="600" height="400" style="border: 1px solid black;">
+			canvas no soportado
+		</canvas>
+		<div id="panel"><div>
+		<div id="colores"></div>
+
+    <script src="/socket.io/socket.io.js" defer></script>
+
+    <script defer>
+
+          const socket = io();
+
+          function cargaContextoCanvas(idCanvas){///obtenir el context de canvas
+            var elemento = document.getElementById(idCanvas);
+            if(elemento && elemento.getContext){
+              var contexto = elemento.getContext('2d');
+              if(contexto){
+                return contexto;
+              }
+            }
+            return false;
+          }
+    
+          function panelcolor(){///crea el panel de colors
+            let can = document.getElementById('micanvas')
+            let pan=document.getElementById("panel");
+            pan.style.top=can.offsetTop-2+'px';
+            pan.style.left=(can.offsetLeft+can.width)+'px';
+            let elem=document.getElementById("colores");
+            to=can.offsetTop-24;
+            lef=can.offsetLeft+45;
+            for (let j=0;j<2;j++){
+              let dic = document.createElement("div"); 
+              let con = document.createTextNode(""); 
+              dic.appendChild(con);
+              dic.style.backgroundColor=color[0];
+              dic.id='muestra'+j;
+              dic.classname="col";
+              dic.style.border="1px solid black";
+              dic.style.width="33px";
+              dic.style.height="20px";
+              dic.style.position="absolute";
+              dic.style.top=(to-5)+"px";
+              if(j==0)
+                dic.style.left=(lef-45)+"px";
+              else
+                dic.style.left=(lef+9)+"px";
+              dic.style.marginLeft="1px";
+              elem.appendChild(dic);
+            }
+            for(var i=10;i<color.length;i++){
+              var dic = document.createElement("div"); 
+              var con = document.createTextNode(""); 
+              dic.appendChild(con);
+              dic.style.backgroundColor=color[i];
+              dic.id=i
+              dic.classname="col";
+              dic.style.border="1px solid black";
+              dic.style.width="15px";
+              dic.style.height="15px";
+              dic.style.position="absolute";
+              ///dic.onclick=/////////Crida a la funcio de canvi de color al fer click
+              if(i%5==0){
+                to+=18;
+                lef=can.offsetLeft;
+              }
+              dic.style.top=to+"px";
+              dic.style.left=lef+"px";
+              lef+=18;
+              dic.style.marginLeft="1px";
+              elem.appendChild(dic);
+              dic.onclick = function(e){
+                let  mostra = document.getElementById('muestra' + document.getElementById('relleno').value)
+                mostra.style.backgroundColor = color[e.currentTarget.id]
+              }
+            }
+          }
+          window.onload = function(){
+            color = new Array ('#000000','#000080','#00008B','#0000CD','#0000FF',
+                '#006400','#008000','#008B8B','#00BFFF','#00FF00',
+                '#00FF7F','#00FFFF','#1E90FF','#20B2AA','#228B22',
+                '#2E8B57','#2F4F4F','#32CD32','#3CB371','#40E0D0',
+                '#4169E1','#4682B4','#483D8B','#48D1CC','#4B0082',
+                '#556B2F','#5F9EA0','#6495ED','#66CDAA','#696969',
+                '#6A5ACD','#6B8E23','#708090','#778899','#7B68EE',
+                '#7CFC00','#7FFF00','#7FFFD4','#800000','#800080',
+                '#808000','#808080','#87CEFA','#8A2BE2','#8B0000',
+                '#8B008B','#8B4513','#8FBC8F','#90EE90','#9370DB',
+                '#9400D3','#98FB98','#9932CC','#9ACD32','#A0522D',
+                '#A52A2A','#A9A9A9','#ADD8E6','#ADFF2F','#AFEEEE',
+                '#B0C4DE','#B0E0E6','#B22222','#B8860B','#BA55D3',
+                '#BC8F8F','#BDB76B','#C0C0C0','#C71585','#CD5C5C',
+                '#CD853F','#D2691E','#D2B48C','#D3D3D3','#D8BFD8',
+                '#DA70D6','#DAA520','#DB7093','#DC143C','#DCDCDC',
+                '#DDA0DD','#DEB887','#E0FFFF','#E6E6FA','#E9967A',
+                '#EE82EE','#EEE8AA','#F08080','#F4A460','#FA8072',
+                '#FC0FC0','#FF0000','#FF6347','#FF69B4','#FF7F50',
+                '#FF8C00','#FFA07A','#FFA500','#FFB6C1','#FFD700');
+            
+            //Colors
+            panelcolor();
+    
+          }
+          function getCurrentFill(){
+            return document.getElementById('relleno').value == 0 ? 'stroke' : 'fill'
+          }
+          function getCurrentColor(){
+            let  mostra = document.getElementById('muestra' + document.getElementById('relleno').value)
+            return mostra.style.backgroundColor
+          }
+    
+          let posicionAnterior = {x: 0, y: 0};
+          let posicionActual = {x: 0, y: 0};
+    
+          let seleccion = document.getElementById('seleccion');
+          seleccion.addEventListener('change', (e) => cogerSeleccion(e));
+          let seleccionado = 'Linea';
+          let canvas = document.getElementById('micanvas');
+          let ctx = canvas.getContext('2d');
+          let rellenoSeleccionado;
+          let relleno = document.getElementById('relleno');
+          relleno.addEventListener('change', (e) => seleccionRelleno(e));
+          canvas.addEventListener('mousedown', (e) => posicionAnteriorFunc(e) );
+          canvas.addEventListener('mouseup', (e) => posicionActualFunc(e) );
+          const radianes = (grados) => grados * Math.PI / 180;
+    
+          function seleccionRelleno(e){
+      
+            if(e.target.value == 0){
+              rellenoSeleccionado = 'Linia';
+            } else {
+              rellenoSeleccionado = 'Relleno';
+            }
+          }
+          
+          function posicionAnteriorFunc(e){
+            posicionAnterior.x = e.offsetX;
+            posicionAnterior.y = e.offsetY;
+    
+            ctx.beginPath();
+            ctx.moveTo(posicionActual.x, posicionActual.y);
+    
+          }
+    
+          function posicionActualFunc(e){
+            posicionActual.x = e.offsetX;
+            posicionActual.y = e.offsetY;
+            let color = getCurrentColor();
+      
+            switch (seleccionado) {
+              case 'Linea':
+                  
+            ctx.moveTo(posicionAnterior.x, posicionAnterior.y);
+						ctx.lineTo(posicionActual.x, posicionActual.y);
+						ctx.strokeStyle=color;
+						ctx.stroke();
+						ctx.closePath();
+
+            let xx1 = posicionAnterior.x;
+            let yy1 = posicionAnterior.y;
+            let xx2 = posicionActual.x;
+            let yy2 = posicionActual.y;  
+
+            socket.emit('drawLine', {xx1, yy1, xx2, yy2, color});
+            break;
+    
+            case 'Arco':
+				    ctx.beginPath();
+
+						let a = (posicionAnterior.y - posicionActual.y);
+						let b = (posicionAnterior.x - posicionActual.x);
+
+						let suma = (a*a) + (b*b);
+						let raizCuadrada = Math.sqrt(suma);
+
+						if(rellenoSeleccionado == 'Relleno'){
+						ctx.fillStyle=color;
+						ctx.arc(posicionAnterior.x, posicionAnterior.y, raizCuadrada, radianes(180), radianes(0));
+						ctx.fill();
+           
+	
+						} else {					
+						ctx.strokeStyle = color;
+						ctx.arc(posicionAnterior.x, posicionAnterior.y, raizCuadrada, radianes(180), radianes(0));
+						ctx.stroke();
+		
+						}
+
+            ctx.closePath();
+
+              let x1 = posicionAnterior.x;
+              let y1 = posicionAnterior.y;
+      
+            socket.emit('drawArc', { x1, y1, raizCuadrada, color });
+
+                break;
+              case 'Punto':
+              ctx.beginPath();
+              ctx.arc(posicionActual.x, posicionActual.y, 5, 0, 2*Math.PI);
+              ctx.fillStyle = color;
+              ctx.fill();
+              ctx.closePath();
+              let x = posicionActual.x;
+              let y = posicionActual.y;
+                socket.emit('drawPoint', { x, y, color });
+             
+                break;
+
+              default:
+                break;
+            }
+    
+          }
+    
+          function cogerSeleccion(e){
+    
+            switch (parseInt(e.target.value)) {
+              case 1:
+                seleccionado = 'Linea';
+                break;
+              case 2:
+                  seleccionado = 'Arco';
+                break;
+              case 3:
+                  seleccionado = 'Punto';	
+              default:
+                break;
+            }
+          }
+
+          socket.on('drawPoint', (data) => {
+            ctx.beginPath();
+            ctx.arc(data.x, data.y, 5, 0, 2*Math.PI);
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.closePath();
+          });
+
+          socket.on('drawArc', (data) => {
+            ctx.beginPath();
+            if(rellenoSeleccionado == 'Relleno'){
+						ctx.fillStyle=color;
+						ctx.arc(data.x1, data.y1, data.raizCuadrada, radianes(180), radianes(0));
+						ctx.fill();
+						} else {					
+						ctx.strokeStyle = color;
+						ctx.arc(data.x1, data.y1, data.raizCuadrada, radianes(180), radianes(0));
+						ctx.stroke();
+						}
+
+            ctx.closePath();
+          });
+
+          socket.on('drawLine', (data) =>{
+            ctx.beginPath();
+            ctx.moveTo(data.xx1, data.yy1);
+            ctx.lineTo(data.xx2, data.yy2);
+            ctx.strokeStyle=color;
+            ctx.stroke();
+            ctx.closePath();
+          });
+
+        </script>
+  </body>
+</html>
